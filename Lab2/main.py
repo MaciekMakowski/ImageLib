@@ -2,6 +2,7 @@ from matplotlib.image import imread
 from matplotlib.image import imsave
 from matplotlib.pyplot import imshow
 import matplotlib.pyplot as plt
+from matplotlib.colors import hsv_to_rgb
 import numpy as np
 from enum import Enum
 
@@ -15,12 +16,12 @@ class ColorModel(Enum):
 class BaseImage:
     data: np.ndarray  # tensor przechowujacy piksele obrazu
     color_model: ColorModel  # atrybut przechowujacy biezacy model barw obrazu
-    def __init__(self, path: str) -> None:
+    def __init__(self, path: str, model:ColorModel) -> None:
         """
         inicjalizator wczytujacy obraz do atrybutu data na podstawie sciezki
         """
         self.data = imread(path)
-        self.color_model= ColorModel.rgb
+        self.color_model = model
         pass
 
     def save_img(self, path: str) -> None:
@@ -39,30 +40,15 @@ class BaseImage:
         pass
 
     def get_layer(self, layer_id: int) -> 'BaseImage':
-        """
-        metoda zwracajaca warstwe o wskazanym indeksie
-        """
-        r_layer, g_layer, b_layer = np.squeeze(np.dsplit(self.data, self.data.shape[-1]))
-        if(layer_id == 0):
-            return r_layer
-        elif (layer_id == 1):
-            return g_layer
-        elif(layer_id == 2):
-           return b_layer
+        return self.data[:, :, layer_id]
         pass
 
-    def calculate_HandS(self,R,G,B):
-        MAX = max(R, G, B)
-        MIN = min(R, G, B)
-        if (MAX > 0):
-            S = 1 - (MIN / MAX)
-        else:
-            S = 0
-        pattern = np.cos((int(R) - int(G / 2) - int(B / 2)) / np.sqrt(int(R ** 2) + int(G ** 2) + int(B ** 2) - (int(R) * int(G)) - (int(R) * int(B)) - (int(G) * int(B)))) ** (-1)
-        if (G >= B):
-            H = pattern
-        else:
-            H = 360 - pattern
+    def calculate_HandS(self,r,g,b):
+        MAX = np.max([r, g, b], axis=0)
+        MIN = np.min([r, g, b], axis=0)
+        S = np.where(MAX > 0, 1 - MIN / MAX, 0)
+        calc = np.power(r, 2) + np.power(g, 2) + np.power(b, 2) - r * g - r * b - g * b
+        H = np.where(g >= b, np.cos((r - g / 2.0 - b / 2.0) / np.sqrt(calc)) ** (-1), 360 - np.cos((r - g / 2.0 - b / 2.0) / np.sqrt(calc)) ** (-1))
         return H, S
 
     def to_hsv(self) -> 'BaseImage':
@@ -72,17 +58,16 @@ class BaseImage:
         """
         if(self.color_model != ColorModel.rgb):
             self.to_rgb()
-        self.data = self.data.copy()
-        for px in self.data:
-            for color in px:
-                V=max(color[0], color[1], color[2])/255
-                H, S = self.calculate_HandS(color[0], color[1], color[2])
-                color[0] = H*np.pi*2
-                color[1] = S*180
-                color[2] = V*180
+        r, g, b = np.squeeze(np.dsplit(self.data, self.data.shape[-1])) / 255.0
+        MAX = np.max([r, g, b], axis=0)
+        V = MAX / 255
+        MIN = np.min([r, g, b], axis=0)
+        H, S =self.calculate_HandS(r, g, b)
 
+        self.data = np.dstack((H, S, V))
         self.color_model = ColorModel.hsv
-        print('Przekonwertowano na z HSV')
+
+        print('Przekonwertowano na HSV')
         return self
         pass
 
@@ -93,18 +78,16 @@ class BaseImage:
         """
         if(self.color_model != ColorModel.rgb):
             self.to_rgb()
-        self.data = self.data.copy()
-        for px in self.data:
-            for color in px:
-                H, S = self.calculate_HandS(color[0],color[1],color[2])
-                I = (int(color[0]) + int(color[1]) + int(color[2])) /3
-                color[0] = H
-                color[1] = S
-                color[2] = I
+        r, g, b = np.squeeze(np.dsplit(self.data, self.data.shape[-1])) / 255.0
+        MAX = np.max([r, g, b], axis=0)
+        MIN = np.min([r, g, b], axis=0)
+        H, S = self.calculate_HandS(r, g, b)
+        I = (r + g + b) / 3.0
 
-
+        self.data = np.dstack((H, S, I))
         self.color_model = ColorModel.hsi
-        print('Przekonwertowano na z HSI')
+
+        print('Przekonwertowano na HSI')
         return self
         pass
 
@@ -113,19 +96,15 @@ class BaseImage:
         metoda dokonujaca konwersji obrazu w atrybucie data do modelu hsl
         metoda zwraca nowy obiekt klasy image zawierajacy obraz w docelowym modelu barw
         """
-        if(self.color_model != ColorModel.rgb):
-            self.to_rgb()
-        self.data = self.data.copy()
-        for px in self.data:
-            for color in px:
-                H, S = self.calculate_HandS(color[0], color[1], color[2])
-                MAX = max(color[0], color[1], color[2])
-                MIN = min(color[0], color[1], color[2])
-                L = (0.5*(int(MAX)+int(MIN)))/255
-                color[0] = H*100
-                color[1] = S*100
-                color[2] = L*100
+        r, g, b = np.squeeze(np.dsplit(self.data, self.data.shape[-1])) / 255.0
+        MAX = np.max([r, g, b], axis=0)
+        MIN = np.min([r, g, b], axis=0)
+        H, S = self.calculate_HandS(r, g, b)
+        L = (0.5 * (MAX + MIN)) / 255
+
+        self.data = np.dstack((H, S, L))
         self.color_model = ColorModel.hsl
+
         print('Przekonwertowano na HSL')
         return self
         pass
@@ -139,113 +118,53 @@ class BaseImage:
 
         """Konwersja do Z HSV DO RGB"""
         if(self.color_model== ColorModel.hsv ):
-            for px in self.data:
-                for color in px:
-                    MAX = (255 * (color[2]))
-                    MIN = (MAX*(1-(color[1])))
-                    Z = (MAX - MIN) * (1 - np.abs((((color[0])/60) % 2)-1))
-                    if color[0] >= 300:
-                        color[0] = MAX
-                        color[1] = MIN
-                        color[2] = Z + MIN
-                    elif color[0] >= 240:
-                        color[0] = Z + MIN
-                        color[1] = MIN
-                        color[2] = MAX
-                    elif color[0] >= 180:
-                        color[0] = MIN
-                        color[1] = MAX
-                        color[2] = Z + MIN
-                    elif color[0] >= 120:
-                        color[0] = MIN
-                        color[1] = MAX
-                        color[2] = Z + MIN
-                    elif color[0] >= 60:
-                        color[0] = Z + MIN
-                        color[1] = MAX
-                        color[2] = MIN
-                    elif color[0] >= 0:
-                        color[0] = MAX
-                        color[1] = Z + MIN
-                        color[2] = MIN
-            print('Przekonwertowano na z HSV na RGB')
+            H, S, V = np.squeeze(np.dsplit(self.data, self.data.shape[-1]))
+            MAX = 255 * V
+            MIN = MAX * (1 - S)
+            z = (MAX - MIN) * (1 - np.fabs(((H / 60) % 2) - 1))
+            r = np.where(H >= 300, MAX,     np.where(H >= 240, z + MIN, np.where(H >= 120, MIN,     np.where(H >= 60, z + MIN, MAX))))
+            g = np.where(H >= 300, z + MIN, np.where(H >= 240, MIN,     np.where(H >= 120, MAX,     np.where(H >= 60, MAX, z + MIN))))
+            b = np.where(H >= 300, MIN,     np.where(H >= 240, MAX,     np.where(H >= 120, z + MIN, MIN)))
+
             self.color_model = ColorModel.rgb
+            self.data = np.dstack((r, g, b))
+
+            print('Przekonwertowano na z HSV na RGB')
 
         """Konwersja do Z HSI DO RGB"""
         if (self.color_model == ColorModel.hsi):
-            for px in self.data:
-                for color in px:
-                    H, S, I = int(color[0]), int(color[1]), int(color[2])
-                    MAX = 255 * (color[2])
-                    MIN = MAX * (1 - (color[1]))
-                    Z = (MAX - MIN) * (1 - np.abs(((color[0] / 60) % 2)) - 1)
-                    if H >= 240:
-                        color[0] = I + I * S * (1 - np.cos(H - 240) / np.cos(300 - H))
-                        color[1] = I - I * S
-                        color[2] = I + I * S * (np.cos(H - 240) / np.cos(300 - H))
-                    elif H == 240:
-                        color[0] = I - I * S
-                        color[1] = I - I * S
-                        color[2] = I + 2 * I * S
-                    elif H > 120:
-                        color[0] = I - I * S
-                        color[1] = I + I * S * (np.cos(H - 120) / np.cos(180 - H))
-                        color[2] = I + I * S * (1 - np.cos(H - 120) / np.cos(180 - H))
-                    elif H == 120:
-                        color[0] = I - I * S
-                        color[1] = I + 2 * I * S
-                        color[2] = I - I * S
-                    elif H > 0:
-                        color[0] = I + I * S * np.cos(H) / np.cos(60 - H)
-                        color[1] = I + I * S * (1 - np.cos(H) / np.cos(60 - H))
-                        color[2] = I - I * S
-                    elif H == 0:
-                        color[0] = I + 2 * I * S
-                        color[1] = I - I * S
-                        color[2] = I - I * S
-            print('Przekonwertowano na z HSI na RGB')
+            H, S, I = np.squeeze(np.dsplit(self.data, self.data.shape[-1]))
+            r = np.where(H > 240, I + I * S * (1 - np.cos(H-240)/np.cos(300 - H)), np.where(H == 240, I - I * S,      np.where(H > 120, I - I * S,                                       np.where(H == 120, I - I * S,     np.where(H > 0, I + I * S * np.cos(H)/np.cos(60 - H),       I + 2 * I * S)))))
+            g = np.where(H > 240, I - I * S,                                       np.where(H == 240, I - I * S,      np.where(H > 120, I + I * S * np.cos(H-120)/np.cos(180 - H),       np.where(H == 120, I + 2 * I * S, np.where(H > 0, I + I * S * (1 - np.cos(H)/np.cos(60 - H)), I - I * S)))))
+            b = np.where(H > 240, I + I * S * np.cos(H-240)/np.cos(300 - H),       np.where(H == 240, I + 2 * I * S,  np.where(H > 120, I + I * S * (1 - np.cos(H-120)/np.cos(180 - H)), np.where(H == 120, I - I * S,     np.where(H > 0, I - I * S,                                  I - I * S)))))
+
+            self.data = np.dstack((r, g, b))
             self.color_model = ColorModel.rgb
+
+            print('Przekonwertowano na z HSI na RGB')
 
         """Konwersja do Z HSL DO RGB"""
         if (self.color_model == ColorModel.hsl):
-            for px in self.data:
-                for color in px:
-                    H, S, L = int(color[0]), int(color[1]), int(color[2])
-                    D = S * (1 - np.abs((2 * L) - 1))
-                    MIN = 255 * (L - 0.5 * D)
-                    X = D * (1 - np.abs(((H / 60) % 2) - 1))
-                    if H >= 300:
-                        color[0] = (255 * D) + MIN
-                        color[1] = MIN
-                        color[2] = (255 * X) + MIN
-                    elif H >= 240:
-                        color[0] = (255 * X) + MIN
-                        color[1] = MIN
-                        color[2] = (255 * D) + MIN
-                    elif H >= 180:
-                        color[0] = MIN
-                        color[1] = (255 * X) + MIN
-                        color[2] = (255 * D) + MIN
-                    elif H >= 120:
-                        color[0] = MIN
-                        color[1] = (255 * D) + MIN
-                        color[2] = (255 * X) + MIN
-                    elif H >= 60:
-                        color[0] = (255 * X) + MIN
-                        color[1] = (255 * D) + MIN
-                        color[2] = MIN
-                    elif H >= 0:
-                        color[0] = (255 * D) + MIN
-                        color[1] = (255 * X) + MIN
-                        color[2] = MIN
-            print('Przekonwertowano na z HSL na RGB')
+            H, S, L = np.squeeze(np.dsplit(self.data, self.data.shape[-1]))
+            d = S * (1 - np.fabs(2 * L - 1))
+            MIN = 255 * (L - 0.5 * d)
+            x = d * (1 - np.fabs(H/60) % 2 - 1)
+            r = np.where(H >= 300, 255 * d + MIN, np.where(H >= 240, 255 * x + MIN, np.where(H >= 180, MIN,           np.where(H >= 120, MIN,            np.where(H >= 60, 255 * x + MIN,255 * d + MIN )))))
+            g = np.where(H >= 300, MIN,           np.where(H >= 240, MIN,           np.where(H >= 180, 255 * x + MIN, np.where(H >= 120,  255 * d + MIN, np.where(H >= 60, 255 * d + MIN,255 * x + MIN)))))
+            b = np.where(H >= 300, 255 * x + MIN, np.where(H >= 240, 255 * d + MIN, np.where(H >= 180, 255 * d + MIN, np.where(H >= 120,  255 * x + MIN, MIN))))
+
             self.color_model = ColorModel.rgb
+            self.data = np.dstack((r, g, b))
+
+            print('Przekonwertowano na z HSV na RGB')
+
+
         if(self.color_model == ColorModel.gray):
             print("Nie można przekonwertować z Modelu 2w do 3w")
 
         return self
         pass
-file = BaseImage('data/lena.jpg')
+file = BaseImage('data/lena.jpg', ColorModel.rgb)
 file.to_hsv()
 file.show_img()
 file.to_rgb()
