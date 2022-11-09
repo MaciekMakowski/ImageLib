@@ -1,5 +1,7 @@
 from GrayScale import _GrayScaleTransform
 from ImageComparison import _ImageComparison
+from BaseImage import _BaseImage
+from ColorModel import _ColorModel
 
 class _Image(_GrayScaleTransform, _ImageComparison):
     """
