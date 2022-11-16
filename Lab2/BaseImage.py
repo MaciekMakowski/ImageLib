@@ -4,6 +4,7 @@ from matplotlib.pyplot import imshow
 import matplotlib.pyplot as plt
 import numpy as np
 from ColorModel import _ColorModel
+from math import acos, pi
 
 
 class _BaseImage:
@@ -40,19 +41,17 @@ class _BaseImage:
         return self.data[:, :, layer_id]
         pass
 
-    def calculate_HandS(self, r, g, b):
-        MAX = np.max([r, g, b], axis=0)
-        MIN = np.min([r, g, b], axis=0)
-        S = np.where(MAX > 0, 1 - MIN / MAX, 0)
-        calc = np.power(r, 2) + np.power(g, 2) + np.power(b, 2) - r * g - r * b - g * b
-        H = np.where(g >= b, np.cos((r - g / 2.0 - b / 2.0) / np.sqrt(calc)) ** (-1),
-                     360 - np.cos((r - g / 2.0 - b / 2.0) / np.sqrt(calc)) ** (-1))
-        H = H / 360
-        S[S > 1] = 1
-        return H, S
+    def calculate_H(self, r, g, b):
+        calc = np.power(r.astype(int), 2) + np.power(g.astype(int), 2) + np.power(b.astype(int), 2) - r.astype(int) * \
+               g.astype(int) - r.astype(int) * b.astype(int) - g.astype(int) * b.astype(int)
+        H = np.where(g >= b, np.arccos((r.astype(int) - g.astype(int) / 2 - b.astype(int) / 2) / np.sqrt(calc)
+                                     ) * 180 / pi,
+                     360 - np.arccos(((r.astype(int) - g.astype(int) / 2 - b.astype(int) / 2) / np.sqrt(calc))
+                                   ) * 180 / pi)
+        return H
 
     def get_layers(self):
-        return np.squeeze(np.dsplit(self.data, self.data.shape[-1])) / 255
+        return np.squeeze(np.dsplit(self.data, self.data.shape[-1]))
 
     def to_hsv(self) -> '_BaseImage':
         """
@@ -63,9 +62,11 @@ class _BaseImage:
             self.to_rgb()
         r, g, b = self.get_layers()
         MAX = np.max([r, g, b], axis=0)
+        MIN = np.min([r, g, b], axis=0)
         V = MAX / 255
-        H, S = self.calculate_HandS(r, g, b)
-
+        H = self.calculate_H(r, g, b)
+        S = np.where(MAX > 0, 1 - MIN / MAX, 0)
+        V = MAX / 255
         self.data = np.dstack((H, S, V))
         self.color_model = _ColorModel.hsv
 
@@ -80,12 +81,16 @@ class _BaseImage:
         """
         if self.color_model != _ColorModel.rgb:
             self.to_rgb()
-        r, g, b = self.get_layers()
-        MAX = np.max([r, g, b], axis=0)
+        r, g, b = np.float32(self.get_layers())
         MIN = np.min([r, g, b], axis=0)
-        H, S = self.calculate_HandS(r, g, b)
-        I = (r + g + b) / 3.0
-
+        calc = np.power(r, 2) + np.power(g, 2) + np.power(b, 2) - r * \
+               g - r * b - g * b
+        H = np.where(g >= b, np.arccos((r - g / 2 - b / 2) / np.sqrt(calc)
+                                       ) * 180 / pi,
+                     360 - np.arccos(((r.astype(int) - g.astype(int) / 2 - b.astype(int) / 2) / np.sqrt(calc))
+                                     ) * 180 / pi)
+        I = (r + g + b) / 3
+        S = np.where(I > 0, 1 - MIN / I, 0)
         self.data = np.dstack((H, S, I))
         self.color_model = _ColorModel.hsi
 
@@ -101,8 +106,10 @@ class _BaseImage:
         r, g, b = self.get_layers()
         MAX = np.max([r, g, b], axis=0)
         MIN = np.min([r, g, b], axis=0)
-        H, S = self.calculate_HandS(r, g, b)
-        L = (0.5 * (MAX + MIN)) / 255
+        D = (MAX - MIN)/255
+        H= self.calculate_H(r, g, b)
+        L = (0.5 * (MAX.astype(int) + MIN.astype(int))) / 255
+        S = np.where(L>0, D / (1 - abs (2 * L - 1)), 0)
 
         self.data = np.dstack((H, S, L))
         self.color_model = _ColorModel.hsl
@@ -118,73 +125,73 @@ class _BaseImage:
         """
         """Konwersja do Z HSV DO RGB"""
         if self.color_model == _ColorModel.hsv:
-            H, S, V = np.squeeze(np.dsplit(self.data, self.data.shape[-1]))
-            MAX = 255 * V
-            MIN = MAX * (1 - S)
-            z = (MAX - MIN) * (1 - np.fabs(((H / 60) % 2) - 1))
-            r = np.where(H >= 300, MAX,
-                         np.where(H >= 240, z + MIN, np.where(H >= 120, MIN, np.where(H >= 60, z + MIN, MAX))))
-            g = np.where(H >= 300, z + MIN,
-                         np.where(H >= 240, MIN, np.where(H >= 120, MAX, np.where(H >= 60, MAX, z + MIN))))
-            b = np.where(H >= 300, MIN, np.where(H >= 240, MAX, np.where(H >= 120, z + MIN, MIN)))
-            r[r > 1] = 1
-            g[g > 1] = 1
-            b[b > 1] = 1
-            r[r < 0] = 0
-            g[g < 0] = 0
-            b[b < 0] = 0
-            self.color_model = _ColorModel.rgb
-            self.data = np.dstack((r, g, b))
+                H, S, V = np.squeeze(np.dsplit(self.data, self.data.shape[-1]))
+                MAX = 255 * V
+                MIN = MAX * (1 - S)
+                z = (MAX - MIN) * (1 - abs(((H / 60) % 2) - 1))
+                r = np.where(H >= 300, MAX,
+                             np.where(H >= 240, z + MIN, np.where(H >= 120, MIN, np.where(H >= 60, z + MIN, MAX))))
+                g = np.where(H >= 300, MIN,
+                             np.where(H >= 240, MIN, np.where(H >= 120, MAX, np.where(H >= 60, MAX, z + MIN))))
+                b = np.where(H >= 300, z + MIN, np.where(H >= 240, MAX, np.where(H >= 120, z + MIN, MIN)))
+                self.color_model = _ColorModel.rgb
+                self.data = np.dstack((r, g, b)).astype(np.uint16)
 
-            print('Przekonwertowano na z HSV na RGB')
+                print('Przekonwertowano na z HSV na RGB')
 
         """Konwersja do Z HSI DO RGB"""
         if self.color_model == _ColorModel.hsi:
             H, S, I = np.squeeze(np.dsplit(self.data, self.data.shape[-1]))
-            r = np.where(H > 240, I + I * S * (1 - np.cos(H - 240) / np.cos(300 - H)), np.where(H == 240, I - I * S,
-                                                                                                np.where(H > 120,
-                                                                                                         I - I * S,
-                                                                                                         np.where(
-                                                                                                             H == 120,
-                                                                                                             I - I * S,
-                                                                                                             np.where(
-                                                                                                                 H > 0,
-                                                                                                                 I + I * S * np.cos(
-                                                                                                                     H) / np.cos(
-                                                                                                                     60 - H),
-                                                                                                                 I + 2 * I * S)))))
-            g = np.where(H > 240, I - I * S, np.where(H == 240, I - I * S,
-                                                      np.where(H > 120, I + I * S * np.cos(H - 120) / np.cos(180 - H),
-                                                               np.where(H == 120, I + 2 * I * S, np.where(H > 0,
-                                                                                                          I + I * S * (
-                                                                                                                      1 - np.cos(
-                                                                                                                  H) / np.cos(
-                                                                                                                  60 - H)),
-                                                                                                          I - I * S)))))
-            b = np.where(H > 240, I + I * S * np.cos(H - 240) / np.cos(300 - H), np.where(H == 240, I + 2 * I * S,
-                                                                                          np.where(H > 120,
-                                                                                                   I + I * S * (
-                                                                                                               1 - np.cos(
-                                                                                                           H - 120) / np.cos(
-                                                                                                           180 - H)),
-                                                                                                   np.where(H == 120,
-                                                                                                            I - I * S,
-                                                                                                            np.where(
-                                                                                                                H > 0,
-                                                                                                                I - I * S,
-                                                                                                                I - I * S)))))
 
-            self.data = np.dstack((r, g, b))
+            rows = self.data.shape[0]
+            columns = self.data.shape[1]
+
+            r = np.zeros((rows, columns))
+            g = np.zeros((rows, columns))
+            b = np.zeros((rows, columns))
+
+            for i in range(rows):
+                for j in range(columns):
+
+                    if b[i, j] == g[i, j] == r[i, j]:
+                        H[i, j] = 0
+
+                    if H[i, j] == 0:
+                        r[i, j] = I[i, j] + 2 * (I[i, j] * S[i, j])
+                        g[i, j] = I[i, j] - I[i, j] * S[i, j]
+                        b[i, j] = I[i, j] - I[i, j] * S[i, j]
+
+                    if 0 <= H[i, j] <= 120:
+                        b[i, j] = I[i, j] * (1 - S[i, j])
+                        r[i, j] = I[i, j] * (
+                                1 + (S[i, j] * np.cos(np.radians(H[i, j]))) / np.cos(np.radians(60) - np.radians(H[i, j])))
+                        g[i, j] = 3 * I[i, j] - (r[i, j] + b[i, j])
+
+                    if 120 < H[i, j] <= 240 or H[i, j] == 120:
+                        r[i, j] = I[i, j] * (1 - S[i, j])
+                        g[i, j] = I[i, j] * (
+                                1 + (S[i, j] * np.cos(np.radians(H[i, j]))) / np.cos(np.radians(60) - np.radians(H[i, j])))
+                        b[i, j] = 3 * I[i, j] - (r[i, j] + g[i, j])
+
+                    if 240 < H[i, j] <= 360 or H[i, j] == 240:
+                        g[i, j] = I[i, j] * (1 - S[i, j])
+                        b[i, j] = I[i, j] * (
+                                1 + (S[i, j] * np.cos(np.radians(H[i, j]))) / np.cos(np.radians(60) - np.radians(H[i, j])))
+                        r[i, j] = 3 * I[i, j] - (g[i, j] + b[i, j])
+
+                    elif r[i, j] > 255:
+                        r[i, j] = 255
+            self.data = np.dstack((r, g, b)).astype(np.uint16)
             self.color_model = _ColorModel.rgb
 
             print('Przekonwertowano na z HSI na RGB')
 
         """Konwersja do Z HSL DO RGB"""
         if self.color_model == _ColorModel.hsl:
-            H, S, L = np.squeeze(np.dsplit(self.data, self.data.shape[-1]))
-            d = S * (1 - np.fabs(2 * L - 1))
+            H, S, L = self.get_layers()
+            d = S * (1 - abs(2 * L - 1))
             MIN = 255 * (L - 0.5 * d)
-            x = d * (1 - np.fabs(H / 60) % 2 - 1)
+            x = d * (1 - abs(H / 60 % 2 - 1))
             r = np.where(H >= 300, 255 * d + MIN, np.where(H >= 240, 255 * x + MIN, np.where(H >= 180, MIN,
                                                                                              np.where(H >= 120, MIN,
                                                                                                       np.where(H >= 60,
@@ -198,14 +205,14 @@ class _BaseImage:
                                                                                              np.where(H >= 120,
                                                                                                       255 * x + MIN,
                                                                                                       MIN))))
-            g[g > 1] = 1
-            b[b > 1] = 1
-            r[r > 1] = 1
+            g[g > 255] = 255
+            b[b > 255] = 255
+            r[r > 255] = 255
             r[r < 0] = 0
             g[g < 0] = 0
             b[b < 0] = 0
             self.color_model = _ColorModel.rgb
-            self.data = np.dstack((r, g, b))
+            self.data = np.dstack((r, g, b)).astype(np.int16)
 
             print('Przekonwertowano na z HSL na RGB')
 
