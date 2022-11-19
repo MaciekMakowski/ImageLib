@@ -2,8 +2,8 @@ from BaseImage import _BaseImage, np, _ColorModel
 
 
 class _GrayScaleTransform(_BaseImage):
-    def __init__(self,path: str, model:_ColorModel) -> None:
-        super().__init__(path, model)
+    def __init__(self, data:np.ndarray = None, path: str = None, model:_ColorModel = None) -> None:
+        super().__init__(data,path, model)
         pass
 
     def to_gray(self) -> _BaseImage:
