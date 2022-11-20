@@ -153,7 +153,13 @@ class _BaseImage:
                 b = np.where(H >= 300, z + MIN,
                             np.where(H >= 240, MAX,
                                       np.where(H >= 120, z + MIN, MIN)))
-
+                # Normalize r g b
+                g[g > 255] = 255
+                b[b > 255] = 255
+                r[r > 255] = 255
+                r[r < 0] = 0
+                g[g < 0] = 0
+                b[b < 0] = 0
                 self.color_model = _ColorModel.rgb
                 self.data = np.dstack((r, g, b)).astype(np.uint8)
 
@@ -196,38 +202,20 @@ class _BaseImage:
                         r[k, j] = z
                         g[k, j] = x
                         b[k, j] = y
-
-
-                        # r = np.where(H > 240, I + I * S * (
-                        #             1 - np.cos(np.radians(H - - 240)) / np.cos(np.radians(300) - np.radians(H))),
-                        #              np.where(H == 240, I - I * S,
-                        #                       np.where(H > 120, I - I * S,
-                        #                                np.where(H == 120, I - I * S,
-                        #                                         np.where(H > 0, I + I * S *
-                        #                                                  np.cos(np.radians(H)) / np.cos(
-                        #                                             np.radians(60) - np.radians(H)),
-                        #                                                  I + 2 * I * S)))))
-                        # g = np.where(H >= 240, I - I * S,
-                        #              np.where(H > 120, I + I * S * np.cos(np.radians(H) - np.radians(120)) / np.cos(
-                        #                  np.radians(180) - np.radians(H)),
-                        #                       np.where(H == 120, I + 2 * I * S,
-                        #                                np.where(H > 0, I + I * S * (1 + np.cos(np.radians(H)) / np.cos(
-                        #                                    np.radians(60) - np.radians(H))),
-                        #                                         I - I * S))))
-                        # b = np.where(H > 240, I + I * S * np.cos(np.radians(H) - np.radians(240)) / np.cos(
-                        #     np.radians(300) - np.radians(H)),
-                        #              np.where(H == 240, I + 2 * I * S,
-                        #                       np.where(H > 120, I + I * S * (
-                        #                                   1 - np.cos(np.radians(H) - np.radians(120)) / np.cos(
-                        #                               np.radians(180) - np.radians(H))),
-                        #                                np.where(H == 120, I - I * S, I - I * S))))
+            # [0...1] to [0...255]
             r[r > 1] = 1
             g[g > 1] = 1
             b[b > 1] = 1
             r = r * 255
             g = g * 255
             b = b * 255
-
+            #Normalize r g b
+            g[g > 255] = 255
+            b[b > 255] = 255
+            r[r > 255] = 255
+            r[r < 0] = 0
+            g[g < 0] = 0
+            b[b < 0] = 0
             self.data = np.dstack((r, g, b)).astype(np.uint16)
             self.color_model = _ColorModel.rgb
 
@@ -252,6 +240,7 @@ class _BaseImage:
                                                                                              np.where(H >= 120,
                                                                                                       255 * x + MIN,
                                                                                                       MIN))))
+            #Normalize r g b
             g[g > 255] = 255
             b[b > 255] = 255
             r[r > 255] = 255
