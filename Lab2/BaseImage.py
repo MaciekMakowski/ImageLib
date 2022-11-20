@@ -36,9 +36,9 @@ class _BaseImage:
         """
         metoda wyswietlajaca obraz znajdujacy sie w atrybucie data
         """
+        data = self.data
         if self.color_model == _ColorModel.gray:
             imshow(self.data, cmap='gray')
-
         else:
             imshow(self.data)
         plt.show()
@@ -120,6 +120,7 @@ class _BaseImage:
         H = self.calculate_H(r, g, b)
         L = (0.5 * (MAX.astype(int) + MIN.astype(int))).astype(int) / 255
         calc = (1 - abs(2 * L - 1))
+        calc[calc == 0] = 0.0001
         S = np.where(L > 0, D / calc, 0)
         S[S > 1] = 1
         S[S < 0] = 0.00001

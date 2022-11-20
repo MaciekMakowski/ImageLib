@@ -1,11 +1,7 @@
-from BaseImage import _BaseImage, _ColorModel
+from Image import _Image, _ColorModel, _ImageDiffMethod, _ImageComparison
 from Histogram import _Histogram
-from GrayScale import _GrayScaleTransform
-file1 = _BaseImage(path='data/lena3.jpg', model=_ColorModel.rgb)
-file2 = _BaseImage(data=file1.data, model=_ColorModel.rgb)
-file3 = _GrayScaleTransform(data=file1.data, model=_ColorModel.rgb)
-file2.show_img()
-file2.to_hsl()
-file2.show_img()
-file2.to_rgb()
-file2.show_img()
+file1 = _Image(path='data/lena3.jpg', model=_ColorModel.rgb)
+file2 = _Image(path='data/lena3.jpg', model=_ColorModel.rgb)
+file2.to_hsi()
+print(file1.similarity(file2))
+

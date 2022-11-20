@@ -19,6 +19,7 @@ class _GrayScaleTransform(_BaseImage):
         gray_layer = r_gray + g_gray + b_gray
         self.data = gray_layer
         self.color_model = _ColorModel.gray
+        print("Przekonwertowano na 2D")
         return self
         pass
 
