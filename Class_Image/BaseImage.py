@@ -45,11 +45,17 @@ class _BaseImage:
         pass
 
     def get_layer(self, layer_id: int) -> '_BaseImage':
+        """
+        metoda zwracająca tylko jedną wybraną warstę obrazu
+        """
         return self.data[:, :, layer_id]
         pass
 
     def calculate_H(self, r, g, b):
-        calc = np.power(r.astype(int), 2) + np.power(g.astype(int), 2) + np.power(b.astype(int), 2) - (r.astype(int) * \
+        """
+        metoda zwracająca H dla modeli kolorów HSV, HSI i HSL
+        """
+        calc = np.power(r.astype(int), 2) + np.power(g.astype(int), 2) + np.power(b.astype(int), 2) - (r.astype(int) *
                g.astype(int)) - (r.astype(int) * b.astype(int)) - (g.astype(int) * b.astype(int))
         calc_sqrt = np.sqrt(calc)
         calc_sqrt[calc_sqrt == 0] = 1
@@ -60,8 +66,21 @@ class _BaseImage:
         return H
 
     def get_layers(self) -> np.ndarray:
+        """
+        metoda zwracająca podzielone warstwy obrazu
+        """
         return np.squeeze(np.dsplit(self.data, self.data.shape[-1]))
 
+    def show_img_in_rgb_range(self) -> None:
+        """
+        metoda wyświetlająca obraz w modelach HSL. HSI, HSL  w przedziale liczb dostępnych w imshow()
+        """
+        if self.color_model == _ColorModel.hsv or self.color_model == _ColorModel.hsi or self.color_model == _ColorModel.hsl:
+            layer1, layer2, layer3 = self.get_layers()
+            layer1 = layer1 / 360
+            image_in_range = np.dstack((layer1, layer2, layer3))
+            imshow(image_in_range)
+            plt.show()
 
     def to_hsv(self) -> '_BaseImage':
         """
@@ -72,10 +91,11 @@ class _BaseImage:
             self.to_rgb()
         r, g, b = self.get_layers()
         MAX = np.max([r, g, b], axis=0)
+        MAX[MAX == 0] = 0.001
         MIN = np.min([r, g, b], axis=0)
         H = self.calculate_H(r, g, b)
         diff = MIN / MAX
-        diff[np.isnan(diff)] = 1
+        diff[np.isnan(diff)] = 0
         S = np.where(MAX == 0, 0, (1 - diff))
         V = MAX / 255
         self.data = np.dstack((H, S, V))
@@ -99,7 +119,7 @@ class _BaseImage:
         g = G / sum
         b = B / sum
         MIN = np.min([r, g, b], axis=0)
-        H = self.calculate_H(R,G,B)
+        H = self.calculate_H(R, G, B)
         I = (R + G + B) / (3 * 255)
         S = 1 - 3 * MIN
         self.data = np.dstack((H, S, I))
@@ -123,7 +143,7 @@ class _BaseImage:
         calc[calc == 0] = 0.0001
         S = np.where(L > 0, D / calc, 0)
         S[S > 1] = 1
-        S[S < 0] = 0.00001
+        S[S < 0] = 0.001
         self.data = np.dstack((H, S, L))
         self.color_model = _ColorModel.hsl
 
@@ -185,7 +205,7 @@ class _BaseImage:
                         r[k, j] = y
                         g[k, j] = z
                         b[k, j] = x
-                    if np.pi * 2 / 3 <= h[k, j] < np.pi * 4 /3 :
+                    if np.pi * 2 / 3 <= h[k, j] < np.pi * 4 / 3:
                         h[k, j] = h[k, j] - np.pi * 2 /3
                         x = i[k, j] * (1 - s[k, j])
                         y = i[k, j] * (1 + s[k, j] * np.cos(h[k, j]) / np.cos(np.pi / 3 - h[k, j]))
@@ -194,7 +214,7 @@ class _BaseImage:
                         g[k, j] = y
                         b[k, j] = z
 
-                    if np.pi * 4 /3 < h[k, j] < np.pi * 2:
+                    if np.pi * 4 / 3 < h[k, j] < np.pi * 2:
                         h[k, j] = h[k, j] - np.pi * 4 / 3
                         x = i[k, j] * (1 - s[k, j])
                         y = i[k, j] * (1 + s[k, j] * np.cos(h[k, j]) / np.cos(np.pi / 3 - h[k, j]))

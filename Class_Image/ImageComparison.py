@@ -25,8 +25,6 @@ class _ImageComparison(_BaseImage):
         Img2 = _GrayScaleTransform(data=other.data, model=other.color_model).to_gray()
         hist1 = _Histogram(Img1.data)
         hist2 = _Histogram(Img2.data)
-        hist1.plot()
-        hist2.plot()
         if len(hist2.values) == len(hist1.values):
             n = len(hist2.values)
             result_arr = np.power(hist1.values - hist2.values, 2)
