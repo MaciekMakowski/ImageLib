@@ -36,7 +36,6 @@ class _BaseImage:
         """
         metoda wyswietlajaca obraz znajdujacy sie w atrybucie data
         """
-        data = self.data
         if self.color_model == _ColorModel.gray:
             imshow(self.data, cmap='gray')
         else:
@@ -94,9 +93,7 @@ class _BaseImage:
         MAX[MAX == 0] = 0.001
         MIN = np.min([r, g, b], axis=0)
         H = self.calculate_H(r, g, b)
-        diff = MIN / MAX
-        diff[np.isnan(diff)] = 0
-        S = np.where(MAX == 0, 0, (1 - diff))
+        S = np.where(MAX == 0, 0, (1 - MIN/MAX))
         V = MAX / 255
         self.data = np.dstack((H, S, V))
         self.color_model = _ColorModel.hsv
@@ -114,7 +111,7 @@ class _BaseImage:
             self.to_rgb()
         R, G, B = np.float32(self.get_layers())
         sum = R + G + B
-        sum[sum == 0] = 0.0001
+        sum[sum == 0] = 255
         r = R / sum
         g = G / sum
         b = B / sum
@@ -159,20 +156,6 @@ class _BaseImage:
         """Konwersja do Z HSV DO RGB"""
         if self.color_model == _ColorModel.hsv:
                 H, S, V = self.get_layers()
-                # MAX = 255 * V
-                # MIN = MAX * (1 - S)
-                # z = (MAX - MIN) * (1 - abs(((np.radians(H) / np.radians(60)) % 2) - 1))
-                # r = np.where(H >= 300, MAX,
-                #              np.where(H >= 240, z.astype(int) + MIN.astype(int),
-                #                       np.where(H >= 120, MIN,
-                #                                np.where(H >= 60, z.astype(int) + MIN.astype(int), MAX))))
-                # g = np.where(H >= 300, MIN,
-                #              np.where(H >= 240, MIN,
-                #                       np.where(H >= 120, MAX,
-                #                                np.where(H >= 60, MAX, z + MIN))))
-                # b = np.where(H >= 300, z + MIN,
-                #             np.where(H >= 240, MAX,
-                #                       np.where(H >= 120, z + MIN, MIN)))
                 C = V * S
                 X = C * (1 - abs(((H / 60) % 2)-1))
                 m = V - C
