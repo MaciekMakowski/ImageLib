@@ -37,6 +37,9 @@ class _ImageComparison(_BaseImage):
 
     def similarity(self, other: _BaseImage) -> float:
         result = self.compare_to(other, _ImageDiffMethod.rmse)
-        return abs(100 - round(result / 100, 2))
+        if 100 - round(result / 100, 2) < 0:
+            return 0
+        else:
+            return 100 - round(result / 100, 2)
 
         pass

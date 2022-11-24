@@ -159,20 +159,29 @@ class _BaseImage:
         """Konwersja do Z HSV DO RGB"""
         if self.color_model == _ColorModel.hsv:
                 H, S, V = self.get_layers()
-                MAX = 255 * V
-                MIN = MAX * (1 - S)
-                z = (MAX - MIN) * (1 - abs(((np.radians(H) / np.radians(60)) % 2) - 1))
-                r = np.where(H >= 300, MAX,
-                             np.where(H >= 240, z.astype(int) + MIN.astype(int),
-                                      np.where(H >= 120, MIN,
-                                               np.where(H >= 60, z.astype(int) + MIN.astype(int), MAX))))
-                g = np.where(H >= 300, MIN,
-                             np.where(H >= 240, MIN,
-                                      np.where(H >= 120, MAX,
-                                               np.where(H >= 60, MAX, z + MIN))))
-                b = np.where(H >= 300, z + MIN,
-                            np.where(H >= 240, MAX,
-                                      np.where(H >= 120, z + MIN, MIN)))
+                # MAX = 255 * V
+                # MIN = MAX * (1 - S)
+                # z = (MAX - MIN) * (1 - abs(((np.radians(H) / np.radians(60)) % 2) - 1))
+                # r = np.where(H >= 300, MAX,
+                #              np.where(H >= 240, z.astype(int) + MIN.astype(int),
+                #                       np.where(H >= 120, MIN,
+                #                                np.where(H >= 60, z.astype(int) + MIN.astype(int), MAX))))
+                # g = np.where(H >= 300, MIN,
+                #              np.where(H >= 240, MIN,
+                #                       np.where(H >= 120, MAX,
+                #                                np.where(H >= 60, MAX, z + MIN))))
+                # b = np.where(H >= 300, z + MIN,
+                #             np.where(H >= 240, MAX,
+                #                       np.where(H >= 120, z + MIN, MIN)))
+                C = V * S
+                X = C * (1 - abs(((H / 60) % 2)-1))
+                m = V - C
+                r = np.where(H >= 300, C, np.where(H >= 240, X, np.where(H >= 120, 0, np.where(H >= 60, X, C))))
+                g = np.where(H >= 240, 0, np.where(H >= 180, X, np.where(H >= 60, C, X)))
+                b = np.where(H >= 300, X, np.where(H >= 180, C, np.where(H >= 120, X, 0)))
+                r = (r + m) * 255
+                g = (g + m) * 255
+                b = (b + m) * 255
                 # Normalize r g b
                 g[g > 255] = 255
                 b[b > 255] = 255
