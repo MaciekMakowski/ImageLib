@@ -6,8 +6,6 @@ class ImageFiltration:
 
     def conv_layer(self,data: np.ndarray, kernel: np.ndarray) -> np.ndarray:
         img_rows, img_columns = data.shape
-        ker_rows, ker_columns  = kernel.data.shape
-        layer = np.zeros_like(data)
         data_line = np.reshape(data, (1, data.size))
         kernel_line = np.reshape(kernel, (1, kernel.size))
         layer = np.convolve(data_line[0],kernel_line[0],'same')
