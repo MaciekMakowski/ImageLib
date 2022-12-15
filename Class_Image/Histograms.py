@@ -3,7 +3,7 @@ import numpy as np
 
 from BaseImage import *
 
-class _Histogram:
+class Histogram:
     """
     klasa reprezentujaca histogram danego obrazu
     """
@@ -46,6 +46,8 @@ class _Histogram:
             plt.plot(space, layer, color=self.hist_color(num))
             num += 1
 
+    def to_cumulated(self):
+        self.values = np.cumsum(self.values)
     def hist_color(self, num: int) -> str:
         match num:
             case 1:

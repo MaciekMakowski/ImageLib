@@ -1,6 +1,6 @@
 from enum import Enum
 
 
-class _ImageDiffMethod(Enum):
+class ImageDiffMethod(Enum):
     mse = 0
     rmse = 1

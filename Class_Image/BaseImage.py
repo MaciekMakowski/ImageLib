@@ -3,15 +3,15 @@ from matplotlib.image import imsave
 from matplotlib.pyplot import imshow
 import matplotlib.pyplot as plt
 import numpy as np
-from ColorModel import _ColorModel
+from ColorModel import ColorModel
 from math import acos, pi
 
 
-class _BaseImage:
+class BaseImage:
     data: np.ndarray  # tensor przechowujacy piksele obrazu
-    color_model: _ColorModel  # atrybut przechowujacy biezacy model barw obrazu
+    color_model: ColorModel  # atrybut przechowujacy biezacy model barw obrazu
 
-    def __init__(self,data:np.ndarray = None, path: str = None, model: _ColorModel = None) -> None:
+    def __init__(self, data:np.ndarray = None, path: str = None, model: ColorModel = None) -> None:
         """
         inicjalizator wczytujacy obraz do atrybutu data na podstawie sciezki
         """
@@ -36,14 +36,55 @@ class _BaseImage:
         """
         metoda wyswietlajaca obraz znajdujacy sie w atrybucie data
         """
-        if self.color_model == _ColorModel.gray:
+        if self.color_model == ColorModel.gray:
             imshow(self.data, cmap='gray')
         else:
             imshow(self.data)
         plt.show()
         pass
 
-    def get_layer(self, layer_id: int) -> '_BaseImage':
+    def show_img_in_rgb_range(self) -> None:
+        """
+        metoda wyświetlająca obraz w modelach HSL. HSI, HSL  w przedziale liczb dostępnych w imshow()
+        """
+        if self.color_model == ColorModel.hsv or self.color_model == ColorModel.hsi or self.color_model == ColorModel.hsl:
+            layer1, layer2, layer3 = self.get_layers()
+            layer1 = layer1 / 360
+            image_in_range = np.dstack((layer1, layer2, layer3))
+            imshow(image_in_range)
+            plt.show()
+
+    def show_in_all_models(self):
+        if self.color_model == ColorModel.rgb:
+            fig = plt.figure(figsize=(8, 5))
+            rows = 1
+            columns = 4
+            fig.add_subplot(rows, columns, 1)
+            plt.imshow(self.to_hsv().data)
+            plt.axis('off')
+            plt.title("HSV")
+
+            fig.add_subplot(rows, columns, 2)
+            plt.imshow(self.to_hsi().data)
+            plt.axis('off')
+            plt.title("HSI")
+
+            fig.add_subplot(rows, columns, 3)
+            plt.imshow(self.to_hsl().data)
+            plt.axis('off')
+            plt.title("HSL")
+
+            fig.add_subplot(rows, columns, 4)
+            plt.imshow(self.to_rgb().data)
+            plt.axis('off')
+            plt.title("RGB")
+            plt.show()
+        else:
+            print("Podaj obraz w modelu RGB")
+
+        pass
+
+    def get_layer(self, layer_id: int) -> 'BaseImage':
         """
         metoda zwracająca tylko jedną wybraną warstę obrazu
         """
@@ -54,14 +95,17 @@ class _BaseImage:
         """
         metoda zwracająca H dla modeli kolorów HSV, HSI i HSL
         """
-        calc = np.power(r.astype(int), 2) + np.power(g.astype(int), 2) + np.power(b.astype(int), 2) - (r.astype(int) *
-               g.astype(int)) - (r.astype(int) * b.astype(int)) - (g.astype(int) * b.astype(int))
+        r = r.astype(int)
+        g = g.astype(int)
+        b = b.astype(int)
+        calc = np.power(r, 2) + np.power(g, 2) + np.power(b, 2) - (r *
+                                    g) - (r * b) - (g * b)
         calc_sqrt = np.sqrt(calc)
         calc_sqrt[calc_sqrt == 0] = 1
         H = np.where(g >= b, np.arccos((r - (g / 2) - (b / 2)) / calc_sqrt
-                                     ) * 180 / pi,
+                                       ) * 180 / pi,
                      360 - np.arccos(((r - (g / 2) - (b / 2)) / calc_sqrt)
-                                   ) * 180 / pi)
+                                     ) * 180 / pi)
         return H
 
     def get_layers(self) -> np.ndarray:
@@ -70,44 +114,34 @@ class _BaseImage:
         """
         return np.squeeze(np.dsplit(self.data, self.data.shape[-1]))
 
-    def show_img_in_rgb_range(self) -> None:
-        """
-        metoda wyświetlająca obraz w modelach HSL. HSI, HSL  w przedziale liczb dostępnych w imshow()
-        """
-        if self.color_model == _ColorModel.hsv or self.color_model == _ColorModel.hsi or self.color_model == _ColorModel.hsl:
-            layer1, layer2, layer3 = self.get_layers()
-            layer1 = layer1 / 360
-            image_in_range = np.dstack((layer1, layer2, layer3))
-            imshow(image_in_range)
-            plt.show()
 
-    def to_hsv(self) -> '_BaseImage':
+    def to_hsv(self) -> 'BaseImage':
         """
         metoda dokonujaca konwersji obrazu w atrybucie data do modelu hsv
         metoda zwraca nowy obiekt klasy image zawierajacy obraz w docelowym modelu barw
         """
-        if self.color_model != _ColorModel.rgb:
+        if self.color_model != ColorModel.rgb:
             self.to_rgb()
         r, g, b = self.get_layers()
         MAX = np.max([r, g, b], axis=0)
-        MAX[MAX == 0] = 0.001
+        MAX[MAX == 0] = 255
         MIN = np.min([r, g, b], axis=0)
         H = self.calculate_H(r, g, b)
         S = np.where(MAX == 0, 0, (1 - MIN/MAX))
         V = MAX / 255
         self.data = np.dstack((H, S, V))
-        self.color_model = _ColorModel.hsv
+        self.color_model = ColorModel.hsv
 
         print('Przekonwertowano na HSV')
         return self
         pass
 
-    def to_hsi(self) -> '_BaseImage':
+    def to_hsi(self) -> 'BaseImage':
         """
         metoda dokonujaca konwersji obrazu w atrybucie data do modelu hsi
         metoda zwraca nowy obiekt klasy image zawierajacy obraz w docelowym modelu barw
         """
-        if self.color_model != _ColorModel.rgb:
+        if self.color_model != ColorModel.rgb:
             self.to_rgb()
         R, G, B = np.float32(self.get_layers())
         sum = R + G + B
@@ -120,41 +154,43 @@ class _BaseImage:
         I = (R + G + B) / (3 * 255)
         S = 1 - 3 * MIN
         self.data = np.dstack((H, S, I))
-        self.color_model = _ColorModel.hsi
+        self.color_model = ColorModel.hsi
         print('Przekonwertowano na HSI')
         return self
         pass
 
-    def to_hsl(self) -> '_BaseImage':
+    def to_hsl(self) -> 'BaseImage':
         """
         metoda dokonujaca konwersji obrazu w atrybucie data do modelu hsl
         metoda zwraca nowy obiekt klasy image zawierajacy obraz w docelowym modelu barw
         """
+        if self.color_model != ColorModel.rgb:
+            self.to_rgb()
         r, g, b = self.get_layers()
         MAX = np.max([r, g, b], axis=0)
         MIN = np.min([r, g, b], axis=0)
-        D = (MAX - MIN)/255
+        D = (MAX - MIN) / 255
         H = self.calculate_H(r, g, b)
         L = (0.5 * (MAX.astype(int) + MIN.astype(int))).astype(int) / 255
         calc = (1 - abs(2 * L - 1))
-        calc[calc == 0] = 0.0001
+        calc[calc == 0] = 1
         S = np.where(L > 0, D / calc, 0)
         S[S > 1] = 1
         S[S < 0] = 0.001
         self.data = np.dstack((H, S, L))
-        self.color_model = _ColorModel.hsl
+        self.color_model = ColorModel.hsl
 
         print('Przekonwertowano na HSL')
         return self
         pass
 
-    def to_rgb(self) -> '_BaseImage':
+    def to_rgb(self) -> 'BaseImage':
         """
         metoda dokonujaca konwersji obrazu w atrybucie data do modelu rgb
         metoda zwraca nowy obiekt klasy image zawierajacy obraz w docelowym modelu barw
         """
         """Konwersja do Z HSV DO RGB"""
-        if self.color_model == _ColorModel.hsv:
+        if self.color_model == ColorModel.hsv:
                 H, S, V = self.get_layers()
                 C = V * S
                 X = C * (1 - abs(((H / 60) % 2)-1))
@@ -172,13 +208,16 @@ class _BaseImage:
                 r[r < 0] = 0
                 g[g < 0] = 0
                 b[b < 0] = 0
-                self.color_model = _ColorModel.rgb
+                r = r.astype(int)
+                g = g.astype(int)
+                b = b.astype(int)
+                self.color_model = ColorModel.rgb
                 self.data = np.dstack((r, g, b)).astype(np.uint8)
 
                 print('Przekonwertowano na z HSV na RGB')
 
         """Konwersja do Z HSI DO RGB"""
-        if self.color_model == _ColorModel.hsi:
+        if self.color_model == ColorModel.hsi:
             H, S, I = self.get_layers()
             h = H * np.pi / 180
             s = S
@@ -222,19 +261,19 @@ class _BaseImage:
             g = g * 255
             b = b * 255
             #Normalize r g b
-            g[g > 255] = 255
-            b[b > 255] = 255
-            r[r > 255] = 255
             r[r < 0] = 0
             g[g < 0] = 0
             b[b < 0] = 0
-            self.data = np.dstack((r, g, b)).astype(np.uint16)
-            self.color_model = _ColorModel.rgb
+            r = r.astype(int)
+            g = g.astype(int)
+            b = b.astype(int)
+            self.data = np.dstack((r, g, b))
+            self.color_model = ColorModel.rgb
 
             print('Przekonwertowano na z HSI na RGB')
 
         """Konwersja do Z HSL DO RGB"""
-        if self.color_model == _ColorModel.hsl:
+        if self.color_model == ColorModel.hsl:
             H, S, L = self.get_layers()
             d = S * (1 - abs(2 * L - 1))
             MIN = 255 * (L - 0.5 * d)
@@ -259,12 +298,15 @@ class _BaseImage:
             r[r < 0] = 0
             g[g < 0] = 0
             b[b < 0] = 0
-            self.color_model = _ColorModel.rgb
-            self.data = np.dstack((r, g, b)).astype(np.int16)
+            r = r.astype(int)
+            g = g.astype(int)
+            b = b.astype(int)
+            self.color_model = ColorModel.rgb
+            self.data = np.dstack((r, g, b))
 
             print('Przekonwertowano na z HSL na RGB')
 
-        if self.color_model == _ColorModel.gray:
+        if self.color_model == ColorModel.gray:
             print("Nie można przekonwertować z Modelu 2w do 3w")
 
         return self

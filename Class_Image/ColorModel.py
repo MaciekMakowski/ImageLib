@@ -1,7 +1,7 @@
 from enum import Enum
 
 
-class _ColorModel(Enum):
+class ColorModel(Enum):
     rgb = 0
     hsv = 1
     hsi = 2
