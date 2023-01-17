@@ -1,7 +1,7 @@
 import numpy as np
 import cv2
 from BaseImage import BaseImage, ColorModel
-from GrayScale import GrayScaleTransform
+import matplotlib.pyplot as plt
 
 class ImageAligning(BaseImage):
     """
@@ -45,11 +45,42 @@ class ImageAligning(BaseImage):
         pass
 
     def clahe(self) -> BaseImage:
-        if self.color_model != ColorModel.gray:
-            img = GrayScaleTransform(data=self.data, model=ColorModel.rgb).to_gray()
-            self.data = img.data
-            self.color_model = img.color_model
+        if self.color_model == ColorModel.gray:
+            clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(4, 4))
+            self.data = clahe.apply(self.data)
+        else:
+            imgLab = cv2.cvtColor(self.data, cv2.COLOR_BGR2LAB)
+            clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+            imgLab[..., 0] = clahe.apply(imgLab[...,0])
 
-        clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(4, 4))
-        self.data = clahe.apply(self.data)
+            self.data = cv2.cvtColor(imgLab, cv2.COLOR_LAB2BGR)
         return self
+
+    def show_clahe_plot(self):
+
+        if self.color_model == ColorModel.gray:
+            plt.subplot(221)
+            plt.imshow(self.data, cmap='gray')
+            plt.subplot(222)
+            plt.hist(self.data.ravel(), bins=256, range=(0, 256), color='gray')
+            plt.subplot(223)
+            plt.imshow(self.data, cmap='gray')
+            plt.subplot(224)
+            plt.hist(self.clahe().data.ravel(), bins=256, range=(0, 256), color='gray')
+
+            plt.show()
+
+        else:
+            plt.subplot(221)
+            plt.imshow(self.data)
+            plt.subplot(222)
+            plt.hist(self.data[..., 0].ravel(), bins=256, range=(0, 256), color='b')
+            plt.hist(self.data[..., 1].ravel(), bins=256, range=(0, 256), color='g')
+            plt.hist(self.data[..., 2].ravel(), bins=256, range=(0, 256), color='r')
+            plt.subplot(223)
+            plt.imshow(self.clahe().data)
+            plt.subplot(224)
+            plt.hist(self.clahe().data[..., 0].ravel(), bins=256, range=(0, 256), color='b')
+            plt.hist(self.clahe().data[..., 1].ravel(), bins=256, range=(0, 256), color='g')
+            plt.hist(self.clahe().data[..., 2].ravel(), bins=256, range=(0, 256), color='r')
+            plt.show()

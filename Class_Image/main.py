@@ -2,13 +2,9 @@ from Image import Image, ColorModel, ImageDiffMethod, ImageComparison,np, ImageA
 import cv2
 import matplotlib.pyplot as plt
 
-file1 = Image(path='data/lena.jpg', model=ColorModel.rgb)
-print(file1.data[0])
-file1.data = file1.RGBandBGR()
-print(file1.data[0])
-file1.to_gray()
-file2 = file1.canny(16, 40, 3)
-file2.show_img()
+file1 = Image(path='data/checkers.jpg', model=ColorModel.rgb)
+file1.find_circles()
+
 # file2 = file1.conv_2d(file1, Filter.W45.value())
 
 # Do widgeta w Jupyterze
