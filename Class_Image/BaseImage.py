@@ -91,6 +91,15 @@ class BaseImage:
         return self.data[:, :, layer_id]
         pass
 
+    def RGBandBGR(self):
+        l1, l2, l3 = self.get_layers()
+        tmp = l1
+        l1 = l3
+        l3 = tmp
+        self.data = np.dstack((l1, l2, l3))
+        return self.data
+
+
     def calculate_H(self, r, g, b):
         """
         metoda zwracająca H dla modeli kolorów HSV, HSI i HSL

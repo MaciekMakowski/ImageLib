@@ -1,7 +1,7 @@
 import numpy as np
-
+import cv2
 from BaseImage import BaseImage, ColorModel
-
+from GrayScale import GrayScaleTransform
 
 class ImageAligning(BaseImage):
     """
@@ -23,18 +23,33 @@ class ImageAligning(BaseImage):
 
 
 
-    def align_image(self, tail_elimination: bool = True) -> 'BaseImage':
+    def align_image(self, tail_elimination) -> 'BaseImage':
         """
         metoda zwracajaca poprawiony obraz metoda wyrownywania histogramow
         """
         if self.color_model == ColorModel.gray:
             self.data = self.align_layer(self.data)
-            return self
+
         if self.color_model == ColorModel.rgb:
             r, g, b = self.get_layers()
             r_layer = self.align_layer(r)
             g_layer = self.align_layer(g)
             b_layer = self.align_layer(b)
             self.data = np.dstack((r_layer, g_layer, b_layer)).astype('uint8')
-            return self
+
+        if tail_elimination == True:
+            self.data = np.quantile(self.data, 0.95)
+            self.data = np.quantile(self.data, 0.05)
+        return self
+
         pass
+
+    def clahe(self) -> BaseImage:
+        if self.color_model != ColorModel.gray:
+            img = GrayScaleTransform(data=self.data, model=ColorModel.rgb).to_gray()
+            self.data = img.data
+            self.color_model = img.color_model
+
+        clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(4, 4))
+        self.data = clahe.apply(self.data)
+        return self
