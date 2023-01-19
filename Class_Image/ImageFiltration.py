@@ -9,7 +9,6 @@ class ImageFiltration(BaseImage):
         img_rows, img_columns = data.shape
         data_line = np.reshape(data, (1, data.size))
         kernel_line = np.reshape(kernel, (1, kernel.size))
-        print(kernel_line)
         layer = np.convolve(data_line[0],kernel_line[0],'same')
         layer = np.reshape(layer, (img_rows, img_columns))
         return layer
@@ -37,7 +36,7 @@ class ImageFiltration(BaseImage):
             r[r < 0] = 0
             g[g < 0] = 0
             b[b < 0] = 0
-            new_data = np.dstack((r, g, b)).astype('int64')
+            new_data = np.dstack((r, g, b)).astype('uint8')
             new_image = BaseImage(data=new_data, model=ColorModel.rgb)
             return new_image
 

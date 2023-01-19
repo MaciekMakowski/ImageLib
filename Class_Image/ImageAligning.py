@@ -13,12 +13,18 @@ class ImageAligning(BaseImage):
         super().__init__(data, path, model)
         pass
 
-    def align_layer(self, layer) -> 'np.ndarray':
+    def align_layer(self, layer, tail_elimination) -> 'np.ndarray':
         values = np.zeros_like(layer)
         px_max = np.max(layer)
         px_min = np.min(layer)
+        layer = layer.astype(np.float64)
+        if tail_elimination == True:
+            px_max = np.quantile(layer, 0.95)
+            px_min = np.quantile(layer, 0.05)
         divider = px_max - px_min
-        values = (layer - px_min) * (255 / divider)
+        values = ((layer - px_min) / divider) * 255
+        values[values < 0] = 0
+        values[values > 255] = 255
         return values
 
 
@@ -32,14 +38,11 @@ class ImageAligning(BaseImage):
 
         if self.color_model == ColorModel.rgb:
             r, g, b = self.get_layers()
-            r_layer = self.align_layer(r)
-            g_layer = self.align_layer(g)
-            b_layer = self.align_layer(b)
-            self.data = np.dstack((r_layer, g_layer, b_layer)).astype('uint8')
+            r_layer = self.align_layer(r, tail_elimination)
+            g_layer = self.align_layer(g, tail_elimination)
+            b_layer = self.align_layer(b, tail_elimination)
 
-        if tail_elimination == True:
-            self.data = np.quantile(self.data, 0.95)
-            self.data = np.quantile(self.data, 0.05)
+            self.data = np.dstack((r_layer, g_layer, b_layer)).astype('uint8')
         return self
 
         pass
