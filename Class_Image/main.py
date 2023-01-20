@@ -2,8 +2,10 @@ from Image import Image, ColorModel, ImageDiffMethod, ImageComparison,np, ImageA
 import cv2
 import matplotlib.pyplot as plt
 
-file1 = Image(path='data/checkers.jpg', model=ColorModel.rgb)
-file1.find_circles()
+file1 = Image(path='data/text2.jpg', model=ColorModel.rgb)
+file1.th_adaptive(13,3)
+file1.findAndColor(255,0,0)
+file1.show_img()
 
 # file2 = file1.conv_2d(file1, Filter.W45.value())
 

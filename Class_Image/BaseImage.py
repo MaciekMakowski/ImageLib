@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from ColorModel import ColorModel
 from math import acos, pi
+import cv2
 
 
 class BaseImage:
@@ -192,6 +193,7 @@ class BaseImage:
         print('Przekonwertowano na HSL')
         return self
         pass
+
 
     def to_rgb(self) -> 'BaseImage':
         """
