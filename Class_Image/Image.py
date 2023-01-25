@@ -21,7 +21,7 @@ class Image(GrayScaleTransform, ImageComparison, ImageAligning, ImageFiltration,
         super().__init__(data, path, model)
         pass
 
-    def findAndColor(self, r, g, b):
+    def findAndColor(self, r, g, b, w):
         if self.color_model != ColorModel.gray:
             img = GrayScaleTransform(data=self.data, model=ColorModel.rgb).to_gray()
             self.color_model = img.color_model
@@ -33,7 +33,7 @@ class Image(GrayScaleTransform, ImageComparison, ImageAligning, ImageFiltration,
         result_lines_img = cv2.cvtColor(img.data, cv2.COLOR_GRAY2RGB)
         for line in lines:
             x0, y0, x1, y1 = line[0]
-            cv2.line(result_lines_img, (x0, y0), (x1, y1), (r, g, b), 8)
+            cv2.line(result_lines_img, (x0, y0), (x1, y1), (r, g, b), w)
 
         self.data = result_lines_img
         return self

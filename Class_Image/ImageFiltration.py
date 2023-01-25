@@ -23,8 +23,8 @@ class ImageFiltration(BaseImage):
             prefix = 1
         if self.color_model == ColorModel.gray:
             self.data = self.conv_layer(self.data, kernel) * prefix
-            new_image = BaseImage(data=self.data, model=ColorModel.gray)
-            return new_image
+            self.color_model = ColorModel.gray
+            return self
         if self.data.shape[2] == 3:
             r_data, g_data, b_data = self.get_layers()
             r = self.conv_layer(r_data, kernel) * prefix
@@ -37,8 +37,9 @@ class ImageFiltration(BaseImage):
             g[g < 0] = 0
             b[b < 0] = 0
             new_data = np.dstack((r, g, b)).astype('uint8')
-            new_image = BaseImage(data=new_data, model=ColorModel.rgb)
-            return new_image
+            self.data = new_data
+            self.color_model = ColorModel.rgb
+            return self
 
         pass
 

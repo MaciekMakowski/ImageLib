@@ -30,7 +30,10 @@ class BaseImage:
         """
         metoda zapisujaca obraz znajdujacy sie w atrybucie data do pliku
          """
-        imsave(path, self.data)
+        if self.color_model == ColorModel.gray:
+            imsave(path, self.data, cmap='gray')
+        else:
+            imsave(path, self.data)
         pass
 
     def show_img(self) -> None:
